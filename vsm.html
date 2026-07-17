@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Value Stream Map Builder (hrs)</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #10b981;
+            --success-hover: #059669;
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --warning: #f59e0b;
+            --warning-hover: #d97706;
+            --donate: #db2777;
+            --donate-hover: #be185d;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            --vadd: #10b981;
+            --nvadd: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #0f172a;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-top: 0.25rem;
+        }
+
+        .controls-row {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .right-buttons {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background 0.2s, opacity 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .btn:active { opacity: 0.9; }
+
+        .btn-primary { background-color: var(--primary); }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+
+        .btn-success { background-color: var(--success); }
+        .btn-success:hover { background-color: var(--success-hover); }
+        
+        .btn-accent { background-color: var(--accent); }
+        .btn-accent:hover { background-color: var(--accent-hover); }
+
+        .btn-warning { background-color: var(--warning); }
+        .btn-warning:hover { background-color: var(--warning-hover); }
+
+        .btn-donate { background-color: var(--donate); }
+        .btn-donate:hover { background-color: var(--donate-hover); }
+
+        .btn-danger {
+            background-color: transparent;
+            color: var(--nvadd);
+            border: 1px solid var(--nvadd);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .btn-danger:hover {
+            background-color: #fef2f2;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .steps-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .step-card {
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            background: #fff;
+            position: relative;
+        }
+
+        .step-card h3 {
+            margin: 0 0 1rem 0;
+            color: var(--primary);
+            font-size: 1.1rem;
+            padding-right: 3rem;
+        }
+
+        .input-group {
+            margin-bottom: 0.75rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: #475569;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 215, 0.1);
+        }
+
+        .visualization-container {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+        }
+
+        canvas {
+            display: block;
+            background: #ffffff;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.35rem;
+            color: #0f172a;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .modal-close:hover {
+            color: #0f172a;
+        }
+
+        .donation-channels {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .channel-row {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .channel-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .channel-value {
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: #e2e8f0;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 180px;
+        }
+
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .channel-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .channel-link:hover {
+            text-decoration: underline;
+        }
+
+        .toast-notification {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #0f172a;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+            font-size: 0.9rem;
+            z-index: 1100;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Value Stream Map Builder</h1>
+    <p>Build and optimize your value stream metrics. All durations are calculated consistently in <strong>Hours</strong>.</p>
+
+    <!-- Metrics Summary Dashboard -->
+    <div class="dashboard">
+        <div class="metric-card">
+            <label>Total Non-Value-Add Time (Queue)</label>
+            <div id="total-lead-time" class="metric-value">0.00 hrs</div>
+        </div>
+        <div class="metric-card">
+            <label>Total Value-Add Time (Process)</label>
+            <div id="total-va-time" class="metric-value">0.00 hrs</div>
+        </div>
+        <div class="metric-card">
+            <label>Process Efficiency</label>
+            <div id="efficiency" class="metric-value" style="color: var(--vadd);">0.00%</div>
+        </div>
+    </div>
+
+    <!-- Interface controls -->
+    <div class="controls-row">
+        <!-- Left Aligned -->
+        <button class="btn btn-primary" onclick="addNewStep()">+ Add Process Step</button>
+        
+        <!-- Right Aligned Group -->
+        <div class="right-buttons">
+            <button class="btn btn-accent" onclick="saveToFile()">📥 Save Map File (.vsm)</button>
+            
+            <div class="file-input-wrapper">
+                <button class="btn btn-warning">📤 Load Map File (.vsm)</button>
+                <input type="file" id="fileLoadInput" accept=".vsm, .json" onchange="loadFromFile(event)">
+            </div>
+
+            <div style="border-left: 2px solid var(--border); height: 28px; margin: 0 0.25rem;"></div>
+
+            <button class="btn btn-success" onclick="exportToImage()">📷 Export Image (PNG)</button>
+            <button class="btn btn-donate" onclick="toggleDonateModal(true)">❤️ Donate</button>
+        </div>
+    </div>
+
+    <!-- Step Input Forms Holder -->
+    <div class="steps-container" id="stepsWrapper"></div>
+
+    <!-- VSM Canvas Visualization -->
+    <div class="visualization-container">
+        <canvas id="vsmCanvas" height="280"></canvas>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="color-box" style="background: var(--nvadd);"></div>
+            <span>Non-Value-Add Time (Queue Hours)</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: var(--vadd);"></div>
+            <span>Value-Add Time (Process Hours)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Donation Modal -->
+<div id="donateModal" class="modal-backdrop" style="display: none;" onclick="handleBackdropClick(event)">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>❤️ Support Project Development</h2>
+            <button class="modal-close" onclick="toggleDonateModal(false)">&times;</button>
+        </div>
+        <p style="margin-top: 0; font-size: 0.95rem; color: #475569;">
+            If you find this interactive tool valuable, consider buying me a coffee or donating to support future updates!
+        </p>
+        <div class="donation-channels">
+            <!-- Buy Me A Coffee -->
+            <div class="channel-row">
+                <span class="channel-label">☕ Buy Me a Coffee</span>
+                <a href="https://www.buymeacoffee.com/marco0004" target="_blank" rel="noopener noreferrer" class="channel-link">buymeacoffee.com/marco0004 &rarr;</a>
+            </div>
+            <!-- PayPal -->
+            <div class="channel-row">
+                <span class="channel-label">💳 PayPal</span>
+                <a href="https://www.paypal.com/donate/?business=4A9E9V4R5YBXY&no_recurring=1&currency_code=USD" target="_blank" rel="noopener noreferrer" class="channel-link">paypal.me/marco0004 &rarr;</a>
+            </div>
+            <!-- 
+			Bitcoin BTC 
+            <div class="channel-row">
+                <span class="channel-label">🪙 BTC Address</span>
+                <span class="channel-value" title="bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh">bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</span>
+                <button class="copy-btn" onclick="copyAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)">Copy</button>
+            </div>
+			-->
+        </div>
+    </div>
+</div>
+
+<!-- Custom Toast Message -->
+<div id="toast" class="toast-notification">Address copied to clipboard!</div>
+
+<script>
+    const STORAGE_KEY = 'vsm_builder_hourly_saved_data';
+    
+    // Default fallback dataset updated to match user process categories
+    let fallbackSteps = [
+        { name: "OCPG Service Now", ct: 0.15, inv: 0.2 },
+        { name: "OCPG PRT Tool fillout",  ct: 0.15, inv: 0.2 },
+        { name: "QMS File Handling", ct: 0.15, inv: 0.2 },
+        { name: "SP Manual process", ct: 0.5, inv: 0.5 }
+    ];
+
+    let stepCounter = 0;
+
+    function init() {
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            try {
+                const stepsArray = JSON.parse(savedData);
+                renderWorkspaceFromArray(stepsArray);
+                return;
+            } catch (e) {
+                console.error("Error reading auto-saved data:", e);
+            }
+        }
+        renderWorkspaceFromArray(fallbackSteps);
+    }
+
+    function renderWorkspaceFromArray(stepsArray) {
+        document.getElementById('stepsWrapper').innerHTML = "";
+        stepCounter = 0;
+        
+        if (stepsArray && stepsArray.length > 0) {
+            stepsArray.forEach(step => {
+                createStepCardElement(step.name, step.ct, step.inv);
+            });
+        }
+        calculateVSM();
+    }
+
+    function createStepCardElement(name = "", ct = 1.0, inv = 4.0) {
+        stepCounter++;
+        const uniqueId = `step_${stepCounter}`;
+        const wrapper = document.getElementById('stepsWrapper');
+        const card = document.createElement('div');
+        card.className = 'step-card';
+        card.id = uniqueId;
+        
+        card.innerHTML = `
+            <button class="btn-danger" onclick="removeStepCard('${uniqueId}')">Remove</button>
+            <div class="input-group">
+                <label>Step Name</label>
+                <input type="text" class="vsm-name" value="${name || 'Process ' + stepCounter}" oninput="calculateVSM()">
+            </div>
+            <div class="input-group">
+                <label>Process Cycle Time (Hours)</label>
+                <input type="number" class="vsm-ct" value="${ct}" min="0" step="any" oninput="calculateVSM()">
+            </div>
+            <div class="input-group">
+                <label>Queue Inventory Time (Hours)</label>
+                <input type="number" class="vsm-inv" value="${inv}" min="0" step="any" oninput="calculateVSM()">
+            </div>
+        `;
+        
+        wrapper.appendChild(card);
+    }
+
+    function addNewStep() {
+        createStepCardElement("", 1.0, 4.0);
+        calculateVSM();
+    }
+
+    function removeStepCard(id) {
+        const card = document.getElementById(id);
+        if (card) {
+            card.remove();
+            calculateVSM();
+        }
+    }
+
+    function getStepDataArray() {
+        const stepCards = document.querySelectorAll('.step-card');
+        let stepDataArray = [];
+        stepCards.forEach(card => {
+            const name = card.querySelector('.vsm-name').value || "Unnamed Process";
+            const ct = parseFloat(card.querySelector('.vsm-ct').value) || 0;
+            const inv = parseFloat(card.querySelector('.vsm-inv').value) || 0;
+            stepDataArray.push({ name, ct, inv });
+        });
+        return stepDataArray;
+    }
+
+    function calculateVSM() {
+        const steps = getStepDataArray();
+        let totalLeadTimeHours = 0;
+        let totalValueAddHours = 0;
+
+        steps.forEach(step => {
+            totalLeadTimeHours += step.inv;
+            totalValueAddHours += step.ct;
+        });
+
+        const totalTimeHours = totalLeadTimeHours + totalValueAddHours;
+        
+        let efficiency = 0;
+        if (totalTimeHours > 0) {
+            efficiency = (totalValueAddHours / totalTimeHours) * 100;
+        }
+
+        document.getElementById('total-lead-time').innerText = totalLeadTimeHours.toFixed(2) + " hrs";
+        document.getElementById('total-va-time').innerText = totalValueAddHours.toFixed(2) + " hrs";
+        document.getElementById('efficiency').innerText = efficiency.toFixed(2) + "%";
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(steps));
+        drawTimeline(steps);
+    }
+
+    function drawTimeline(steps) {
+        const canvas = document.getElementById('vsmCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const stepWidth = 220;
+        const startX = 60;
+        const endMargin = 100;
+
+        canvas.width = Math.max(900, startX + (steps.length * stepWidth) + endMargin);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (steps.length === 0) {
+            ctx.fillStyle = "#64748b";
+            ctx.font = "16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("No process steps found. Click '+ Add Process Step' above.", canvas.width / 2, canvas.height / 2);
+            return;
+        }
+
+        ctx.lineWidth = 2;
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "center";
+
+        // Layout Spacing Adjustment (Process Box vs Ladder separation)
+        const boxY = 25;       
+        const boxHeight = 55;  
+        const topY = 135;      
+        const bottomY = 200;   
+        
+        let currentX = startX;
+
+        steps.forEach((step, index) => {
+            // Draw Step Block Diagram
+            ctx.strokeStyle = "#475569";
+            ctx.fillStyle = "#f1f5f9";
+            ctx.fillRect(currentX + 40, boxY, 140, boxHeight);
+            ctx.strokeRect(currentX + 40, boxY, 140, boxHeight);
+            
+            ctx.fillStyle = "#0f172a";
+            
+            // Smart Text Truncation to fit cleanly inside the 140px box
+            let displayName = step.name;
+            if (displayName.length > 20) {
+                displayName = displayName.substring(0, 18) + "...";
+            }
+            
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillText(displayName, currentX + 110, boxY + 22);
+            
+            ctx.font = "11px sans-serif";
+            ctx.fillText(`CT: ${step.ct}h`, currentX + 110, boxY + 40);
+
+            // Draw VSM Step Lead Ladder Waveforms
+            ctx.strokeStyle = "#000000";
+            ctx.beginPath();
+            ctx.moveTo(currentX, topY);
+            ctx.lineTo(currentX + 110, topY);
+            ctx.lineTo(currentX + 110, bottomY);
+            ctx.lineTo(currentX + 220, bottomY);
+            ctx.lineTo(currentX + 220, topY);
+            ctx.stroke();
+
+            // Label step metrics inside timeline segments
+            ctx.fillStyle = "#ef4444";
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillText(`${step.inv} hrs`, currentX + 55, topY - 12);
+
+            // Green text (Value-Add Process Time)
+            ctx.fillStyle = "#10b981";
+            ctx.fillText(`${step.ct} hrs`, currentX + 165, bottomY + 18);
+
+            // Append linking flow arrows between process boxes
+            if (index < steps.length - 1) {
+                ctx.strokeStyle = "#94a3b8";
+                ctx.fillStyle = "#94a3b8";
+                ctx.beginPath();
+                ctx.moveTo(currentX + 180, boxY + (boxHeight / 2));
+                ctx.lineTo(currentX + 260, boxY + (boxHeight / 2));
+                ctx.stroke();
+
+                // Build triangular arrowhead marker
+                ctx.beginPath();
+                ctx.moveTo(currentX + 255, boxY + (boxHeight / 2) - 5);
+                ctx.lineTo(currentX + 260, boxY + (boxHeight / 2));
+                ctx.lineTo(currentX + 255, boxY + (boxHeight / 2) + 5);
+                ctx.fill();
+            }
+
+            currentX += stepWidth;
+        });
+
+        // Cap off final line terminal boundary block
+        ctx.strokeStyle = "#000000";
+        ctx.beginPath();
+        ctx.moveTo(currentX, topY);
+        ctx.lineTo(currentX + 40, topY);
+        ctx.stroke();
+    }
+
+    // --- DONATION / MODAL UTILITIES ---
+
+    function toggleDonateModal(isOpen) {
+        const modal = document.getElementById('donateModal');
+        modal.style.display = isOpen ? 'flex' : 'none';
+    }
+
+    function handleBackdropClick(event) {
+        if (event.target === document.getElementById('donateModal')) {
+            toggleDonateModal(false);
+        }
+    }
+
+    function copyAddress(text, btnElement) {
+        // Use document.execCommand('copy') as per iframe guideline criteria
+        const tempInput = document.createElement("input");
+        tempInput.value = text;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        try {
+            document.execCommand("copy");
+            
+            // UI Button feedback
+            const originalText = btnElement.innerText;
+            btnElement.innerText = "Copied!";
+            btnElement.style.backgroundColor = "var(--success)";
+            
+            // Show toast message
+            showToast("Copied to clipboard!");
+            
+            setTimeout(() => {
+                btnElement.innerText = originalText;
+                btnElement.style.backgroundColor = "";
+            }, 1500);
+        } catch (err) {
+            console.error("Copy failed", err);
+        }
+        document.body.removeChild(tempInput);
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.innerText = message;
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 2000);
+    }
+
+    // --- LOADING AND SAVING PROTOCOLS ---
+
+    function saveToFile() {
+        const dataStr = JSON.stringify(getStepDataArray(), null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        
+        const link = document.createElement('a');
+        link.download = 'hourly_vsm_data.vsm';
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+
+    function loadFromFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const loadedData = JSON.parse(e.target.result);
+                if (Array.isArray(loadedData)) {
+                    renderWorkspaceFromArray(loadedData);
+                } else {
+                    alert("Invalid file structure.");
+                }
+            } catch (err) {
+                alert("Error loading file: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = "";
+    }
+
+    function exportToImage() {
+        const canvas = document.getElementById('vsmCanvas');
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = canvas.width;
+        exportCanvas.height = canvas.height + 80;
+        const eCtx = exportCanvas.getContext('2d');
+        
+        eCtx.fillStyle = '#ffffff';
+        eCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        eCtx.drawImage(canvas, 0, 40);
+        
+        eCtx.fillStyle = '#0f172a';
+        eCtx.font = 'bold 14px sans-serif';
+        eCtx.textAlign = 'left';
+        
+        const leadTime = document.getElementById('total-lead-time').innerText;
+        const vaTime = document.getElementById('total-va-time').innerText;
+        const efficiency = document.getElementById('efficiency').innerText;
+        
+        eCtx.fillText(`Value Stream Map | Non-Value-Add: ${leadTime} | Value-Add: ${vaTime} | Efficiency: ${efficiency}`, 20, 25);
+        
+        const link = document.createElement('a');
+        link.download = 'hourly_value_stream_map.png';
+        link.href = exportCanvas.toDataURL('image/png');
+        link.click();
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
